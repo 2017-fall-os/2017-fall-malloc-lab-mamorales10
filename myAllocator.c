@@ -191,6 +191,38 @@ BlockPrefix_t *findFirstFit(size_t s) {	/* find first block with usable space > 
     return growArena(s);
 }
 
+BlockPrefix_t *findBestFit(size_t s){ /* Find block with usable space closest to s*/
+  BlockPrefix_t *p = arenaBegin;
+  size_t bestSize = 0;
+  BlockPrefix_t *bestFitPrefix = 0;
+  size_t currentSize;
+  while(p){
+    if(!p->allocated){
+      currentSize = computeUsableSpace(p);
+      if(currentSize == s)
+	return p;
+      else if(currentSize > s){
+	if(bestSize == 0){
+	  bestSize = currentSize;
+	  bestFitPrefix = p;
+	}
+	else{
+	  if(currentSize < bestSize){
+	    bestFitPrefix = p;
+	    bestSize = currentSize;
+	  }
+	}
+      }
+    }
+    p = getNextPrefix(p);
+  }
+
+  if(bestFitPrefix)
+    return bestFitPrefix;
+
+  return growArena(s);
+}
+
 /* conversion between blocks & regions (offset of prefixSize */
 
 BlockPrefix_t *regionToPrefix(void *r) {
@@ -217,6 +249,29 @@ void *firstFitAllocRegion(size_t s) {
   if (arenaBegin == 0)		/* arena uninitialized? */
     initializeArena();
   p = findFirstFit(s);		/* find a block */
+  if (p) {			/* found a block */
+    size_t availSize = computeUsableSpace(p);
+    if (availSize >= (asize + prefixSize + suffixSize + 8)) { /* split block? */
+      void *freeSliverStart = (void *)p + prefixSize + suffixSize + asize;
+      void *freeSliverEnd = computeNextPrefixAddr(p);
+      makeFreeBlock(freeSliverStart, freeSliverEnd - freeSliverStart);
+      makeFreeBlock(p, freeSliverStart - (void *)p); /* piece being allocated */
+    }
+    p->allocated = 1;		/* mark as allocated */
+    return prefixToRegion(p);	/* convert to *region */
+  } else {			/* failed */
+    return (void *)0;
+  }
+  
+}
+
+/* Uses best fit to allocate a region */
+void *bestFitAllocRegion(size_t s) {
+  size_t asize = align8(s);
+  BlockPrefix_t *p;
+  if (arenaBegin == 0)		/* arena uninitialized? */
+    initializeArena();
+  p = findBestFit(s);		/* find a block */
   if (p) {			/* found a block */
     size_t availSize = computeUsableSpace(p);
     if (availSize >= (asize + prefixSize + suffixSize + 8)) { /* split block? */
