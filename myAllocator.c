@@ -314,7 +314,20 @@ void *resizeRegion(void *r, size_t newSize) {
     oldSize = 0;		/* non-existant regions have size 0 */
   if (oldSize >= newSize)	/* old region is big enough */
     return r;
-  else {			/* allocate new region & copy old data */
+  else {
+    BlockPrefix_t *successor = getNextPrefix(regionToPrefix(r));
+    if(successor && !successor->allocated){
+      if((computeUsableSpace(successor) + computeUsableSpace(regionToPrefix(r))) >= newSize){
+	BlockPrefix_t *rPrefix = regionToPrefix(r);
+	rPrefix->allocated = 0;
+	BlockPrefix_t *biggerRegionPrefix = coalescePrev(successor);
+	if(biggerRegionPrefix == getPrevPrefix(successor)){ /*Checking if regions were coalesced*/
+	  rPrefix->allocated = 1;
+	  return prefixToRegion(biggerRegionPrefix);
+	}
+      }
+    }
+    /* allocate new region & copy old data */
     char *o = (char *)r;	/* treat both regions as char* */
     char *n = (char *)firstFitAllocRegion(newSize); 
     int i;
@@ -322,6 +335,7 @@ void *resizeRegion(void *r, size_t newSize) {
       n[i] = o[i];
     freeRegion(o);		/* free old region */
     return (void *)n;
+    
   }
 }
 
