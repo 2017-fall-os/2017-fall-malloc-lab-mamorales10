@@ -321,7 +321,16 @@ void *resizeRegion(void *r, size_t newSize) {
 	BlockPrefix_t *rPrefix = regionToPrefix(r);
 	rPrefix->allocated = 0;
 	BlockPrefix_t *biggerRegionPrefix = coalescePrev(successor);
-	if(biggerRegionPrefix == getPrevPrefix(successor)){ /*Checking if regions were coalesced*/
+	if(biggerRegionPrefix == rPrefix){ /*Checking if regions were coalesced*/
+	  size_t asize = align8(newSize);
+	  
+	  if (computeUsableSpace(rPrefix) >= (asize + prefixSize + suffixSize + 8)){ /* split block? */
+	    void *freeSliverStart = (void *)rPrefix + prefixSize + suffixSize + asize;
+	    void *freeSliverEnd = computeNextPrefixAddr(rPrefix);
+	    makeFreeBlock(freeSliverStart, freeSliverEnd - freeSliverStart);
+	    makeFreeBlock(rPrefix, freeSliverStart - (void *)rPrefix); /* piece being resized */
+	  }
+	  
 	  rPrefix->allocated = 1;
 	  return prefixToRegion(biggerRegionPrefix);
 	}
