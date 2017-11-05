@@ -24,6 +24,10 @@ To compile:
 ~~~
 $ make
 ~~~
+To run malloc lab test program:
+~~~
+$ ./myAllocatorTest2
+~~~
 To clean:
 ~~~
 $ make clean
