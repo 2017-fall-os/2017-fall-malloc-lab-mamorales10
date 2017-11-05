@@ -1,8 +1,11 @@
 CFLAGS	= -g
 CC	= gcc
-OBJ	= myAllocatorTest1 test1
+OBJ	= myAllocatorTest1 myAllocatorTest2 test1
 
 all: $(OBJ)
+
+myAllocatorTest2: myAllocator.o myAllocatorTest2.o
+	$(CC) $(CFLAGS) -o $@ $^
 
 myAllocatorTest1: myAllocator.o myAllocatorTest1.o
 	$(CC) $(CFLAGS) -o $@ $^
